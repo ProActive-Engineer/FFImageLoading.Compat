@@ -28,17 +28,16 @@ using System.IO;
 
 namespace FFImageLoading.Maui.Platform
 {
-    /// <summary>
-    /// CachedImage Implementation
-    /// </summary>
-    [Preserve(AllMembers = true)]
-    public class CachedImageHandler : ViewHandler<CachedImage, PImageView>
-    {
-        private bool _isDisposed;
+	/// <summary>
+	/// CachedImage Implementation
+	/// </summary>
+	[Preserve(AllMembers = true)]
+	public class CachedImageHandler : ViewHandler<CachedImage, PImageView>
+	{
+		private bool _isDisposed;
 		private IScheduledWork _currentTask;
-        private ImageSourceBinding _lastImageSource;
-        private readonly object _updateBitmapLock = new object();
-
+		private ImageSourceBinding _lastImageSource;
+		private readonly object _updateBitmapLock = new object();
 
 		public CachedImageHandler() : base(ViewHandler.ViewMapper, ViewHandler.ViewCommandMapper)
 		{
@@ -50,7 +49,6 @@ namespace FFImageLoading.Maui.Platform
 
 		IImageService<TImageContainer> ImageService
 			=> this.VirtualView.FindMauiContext()?.Services.GetRequiredService<IImageService<TImageContainer>>();
-
 
 		protected override PImageView CreatePlatformView()
 		{
@@ -94,23 +92,23 @@ namespace FFImageLoading.Maui.Platform
 		void VirtualView_PropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
 			if (e.PropertyName == CachedImage.SourceProperty.PropertyName)
-            {
-                UpdateImage(PlatformView, VirtualView, null);
-            }
-            if (e.PropertyName == CachedImage.IsOpaqueProperty.PropertyName)
-            {
-                SetOpacity();
-            }
-            if (e.PropertyName == CachedImage.AspectProperty.PropertyName)
-            {
-                SetAspect();
-            }
-        }
+			{
+				UpdateImage(PlatformView, VirtualView, null);
+			}
+			if (e.PropertyName == CachedImage.IsOpaqueProperty.PropertyName)
+			{
+				SetOpacity();
+			}
+			if (e.PropertyName == CachedImage.AspectProperty.PropertyName)
+			{
+				SetAspect();
+			}
+		}
 
-        private void SetAspect()
-        {
-            if (PlatformView == null || PlatformView.Handle == IntPtr.Zero || VirtualView == null || _isDisposed)
-                return;
+		private void SetAspect()
+		{
+			if (PlatformView == null || PlatformView.Handle == IntPtr.Zero || VirtualView == null || _isDisposed)
+				return;
 #if __IOS__
 			PlatformView.ContentMode = VirtualView.Aspect switch
 			{
@@ -137,148 +135,155 @@ namespace FFImageLoading.Maui.Platform
 #endif
 		}
 
-        private void SetOpacity()
-        {
-            if (PlatformView == null || PlatformView.Handle == IntPtr.Zero || VirtualView == null || _isDisposed)
-                return;
+		private void SetOpacity()
+		{
+			if (PlatformView == null || PlatformView.Handle == IntPtr.Zero || VirtualView == null || _isDisposed)
+				return;
 #if __IOS__
 			PlatformView.Opaque = VirtualView.IsOpaque;
-#elif __MACOS__            
+#elif __MACOS__
             Control.SetIsOpaque(Element.IsOpaque);
 #endif
-        }
+		}
 
-        private void UpdateImage(PImageView imageView, CachedImage image, CachedImage previousImage)
-        {
-            lock (_updateBitmapLock)
-            {
-                CancelIfNeeded();
+		private void UpdateImage(PImageView imageView, CachedImage image, CachedImage previousImage)
+		{
+			lock (_updateBitmapLock)
+			{
+				CancelIfNeeded();
 
-                if (image == null || imageView == null || imageView.Handle == IntPtr.Zero || _isDisposed)
-                    return;
+				if (image == null || imageView == null || imageView.Handle == IntPtr.Zero || _isDisposed)
+					return;
 
-                var ffSource = ImageSourceBinding.GetImageSourceBinding(image.Source, image);
-                if (ffSource == null)
-                {
-                    if (_lastImageSource == null)
-                        return;
+				var ffSource = ImageSourceBinding.GetImageSourceBinding(image.Source, image);
+				if (ffSource == null)
+				{
+					if (_lastImageSource == null)
+						return;
 
-                    _lastImageSource = null;
-                    imageView.Image = null;
-                    return;
-                }
+					_lastImageSource = null;
+					imageView.Image = null;
+					return;
+				}
 
-                if (previousImage != null && !ffSource.Equals(_lastImageSource))
-                {
-                    _lastImageSource = null;
-                    imageView.Image = null;
-                }
+				if (previousImage != null && !ffSource.Equals(_lastImageSource))
+				{
+					_lastImageSource = null;
+					imageView.Image = null;
+				}
 
-                image.SetIsLoading(true);
+				image.SetIsLoading(true);
 
 				var placeholderSource = ImageSourceBinding.GetImageSourceBinding(image.LoadingPlaceholder, image);
-                var errorPlaceholderSource = ImageSourceBinding.GetImageSourceBinding(image.ErrorPlaceholder, image);
-                image.SetupOnBeforeImageLoading(out var imageLoader, ffSource, placeholderSource, errorPlaceholderSource);
+				var errorPlaceholderSource = ImageSourceBinding.GetImageSourceBinding(image.ErrorPlaceholder, image);
+				image.SetupOnBeforeImageLoading(out var imageLoader, ffSource, placeholderSource, errorPlaceholderSource);
 
 				if (imageLoader != null)
-                {
+				{
 					// Try and get density from the view to ensure it comes from the appropriate display
 					// the view is on, but fallback to a main display value
 					imageLoader.Scale = VirtualView?.GetVisualElementWindow()?.RequestDisplayDensity()
 						?? (float)DeviceDisplay.MainDisplayInfo.Density;
 
 					var finishAction = imageLoader.OnFinish;
-                    var sucessAction = imageLoader.OnSuccess;
+					var sucessAction = imageLoader.OnSuccess;
 
-                    imageLoader.Finish((work) =>
-                    {
-                        finishAction?.Invoke(work);
-                        ImageLoadingSizeChanged(image, false);
-                    });
+					imageLoader.Finish((work) =>
+					{
+						finishAction?.Invoke(work);
+						ImageLoadingSizeChanged(image, false);
+					});
 
-                    imageLoader.Success((imageInformation, loadingResult) =>
-                    {
-                        sucessAction?.Invoke(imageInformation, loadingResult);
-                        _lastImageSource = ffSource;
-                    });
+					imageLoader.Success((imageInformation, loadingResult) =>
+					{
+						sucessAction?.Invoke(imageInformation, loadingResult);
+						_lastImageSource = ffSource;
+					});
 
-                    imageLoader.LoadingPlaceholderSet(() => ImageLoadingSizeChanged(image, true));
+					imageLoader.LoadingPlaceholderSet(() => ImageLoadingSizeChanged(image, true));
 
-                    if (!_isDisposed)
-                        _currentTask = imageLoader.Into(imageView, ImageService);
-                }
-            }
-        }
+					if (!_isDisposed)
+						_currentTask = imageLoader.Into(imageView, ImageService);
+				}
+			}
+		}
 
 		private async void ImageLoadingSizeChanged(CachedImage element, bool isLoading)
 		{
 			if (element == null || _isDisposed)
 				return;
 
-			await ImageService.Dispatcher.PostAsync(() =>
+			if (element.Dispatcher is not null)
 			{
-				if (element == null || _isDisposed)
-					return;
+				await element.Dispatcher.DispatchAsync(() =>
+				{
+					if (element == null || _isDisposed)
+						return;
 
-				((IVisualElementController)element).InvalidateMeasure(Microsoft.Maui.Controls.Internals.InvalidationTrigger.MeasureChanged);
+					((IVisualElementController)element).InvalidateMeasure(Microsoft.Maui.Controls.Internals
+						.InvalidationTrigger.MeasureChanged);
 
-				if (!isLoading)
-					element.SetIsLoading(isLoading);
-			}).ConfigureAwait(false);
+					if (!isLoading)
+						element.SetIsLoading(isLoading);
+				}).ConfigureAwait(false);
+			}
 		}
 
 		private void ReloadImage()
-        {
-            UpdateImage(PlatformView, VirtualView, null);
-        }
+		{
+			UpdateImage(PlatformView, VirtualView, null);
+		}
 
-        private void CancelIfNeeded()
-        {
-            try
-            {
-                _currentTask?.Cancel();
-            }
-            catch { }
-        }
+		private void CancelIfNeeded()
+		{
+			try
+			{
+				_currentTask?.Cancel();
+			}
+			catch { }
+		}
 
-        private Task<byte[]> GetImageAsJpgAsync(GetImageAsJpgArgs args)
-        {
-            return GetImageAsByteAsync(false, args.Quality, args.DesiredWidth, args.DesiredHeight);
-        }
+		private Task<byte[]> GetImageAsJpgAsync(GetImageAsJpgArgs args)
+		{
+			return GetImageAsByteAsync(false, args.Quality, args.DesiredWidth, args.DesiredHeight);
+		}
 
-        private Task<byte[]> GetImageAsPngAsync(GetImageAsPngArgs args)
-        {
-            return GetImageAsByteAsync(true, 90, args.DesiredWidth, args.DesiredHeight);
-        }
+		private Task<byte[]> GetImageAsPngAsync(GetImageAsPngArgs args)
+		{
+			return GetImageAsByteAsync(true, 90, args.DesiredWidth, args.DesiredHeight);
+		}
 
-        private async Task<byte[]> GetImageAsByteAsync(bool usePNG, int quality, int desiredWidth, int desiredHeight)
-        {
-            PImage image = null;
+		private async Task<byte[]> GetImageAsByteAsync(bool usePNG, int quality, int desiredWidth, int desiredHeight)
+		{
+			PImage image = null;
 
-            await Dispatcher.GetForCurrentThread().DispatchAsync(() =>
-            {
-                if (PlatformView != null)
-                    image = PlatformView.Image;
-            }).ConfigureAwait(false);
+			if (PlatformView is not null && VirtualView.Dispatcher is not null)
+			{
+				await VirtualView.Dispatcher.DispatchAsync(() =>
+				{
+					if (PlatformView != null)
+						image = PlatformView.Image;
+				}).ConfigureAwait(false);
+			}
 
-            if (image == null)
-                return null;
+			if (image == null)
+				return null;
 
-            if (desiredWidth != 0 || desiredHeight != 0)
-            {
-                image = image.ResizeUIImage(desiredWidth, desiredHeight, InterpolationMode.Default);
-            }
+			if (desiredWidth != 0 || desiredHeight != 0)
+			{
+				image = image.ResizeUIImage(desiredWidth, desiredHeight, InterpolationMode.Default);
+			}
 
 #if __IOS__
 
-            var imageData = usePNG ? image.AsPNG() : image.AsJPEG((nfloat)quality / 100f);
+			var imageData = usePNG ? image.AsPNG() : image.AsJPEG((nfloat)quality / 100f);
 
-            if (imageData == null || imageData.Length == 0)
-                return null;
+			if (imageData == null || imageData.Length == 0)
+				return null;
 
-            var encoded = imageData.ToArray();
-            imageData.TryDispose();
-            return encoded;
+			var encoded = imageData.ToArray();
+			imageData.TryDispose();
+			return encoded;
 #elif __MACOS__
 
             byte[] encoded;
@@ -296,7 +301,7 @@ namespace FFImageLoading.Maui.Platform
 
             return encoded;
 #endif
-        }
+		}
 
 #if __MACOS__
         public class FormsNSImageView : NSImageView
@@ -316,7 +321,7 @@ namespace FFImageLoading.Maui.Platform
 
             //public override void DrawRect(CGRect dirtyRect)
             //{
-            //    // TODO if it isn't disabled then this issue happens: 
+            //    // TODO if it isn't disabled then this issue happens:
             //    // https://github.com/luberda-molinet/FFImageLoading/issues/922
             //    // base.DrawRect(dirtyRect);
             //}
@@ -324,6 +329,6 @@ namespace FFImageLoading.Maui.Platform
             public override bool IsOpaque => _isOpaque;
         }
 #endif
-    }
+	}
 }
 
