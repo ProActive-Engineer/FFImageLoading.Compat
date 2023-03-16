@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -18,7 +18,7 @@
         <ScrollView><StackLayout>
 
             <!-- FIRST APPROACH (fill): -->
-            <!-- <ffimageloadingsvg:SvgCachedImage Source="sample.svg"/> -->
+            <ffimageloadingsvg:SvgCachedImage Source="sample.svg"/>
             
             <!-- SECOND APPROACH (PCL EmbeddedResource): -->
             <ffimageloadingsvg:SvgCachedImage WidthRequest="200" HeightRequest="200" Source="resource://Sample.sample.svg"/>
