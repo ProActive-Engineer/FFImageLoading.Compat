@@ -5,7 +5,9 @@ using FFImageLoading.Work;
 
 namespace FFImageLoading.DataResolvers
 {
-    public class DataResolverFactory : IDataResolverFactory
+
+
+	public class DataResolverFactory : IDataResolverFactory
     {
 		public DataResolverFactory(IConfiguration configuration, IDownloadCache downloadCache)
 		{
@@ -21,11 +23,12 @@ namespace FFImageLoading.DataResolvers
             switch (source)
             {
                 case Work.ImageSource.ApplicationBundle:
-                    return new BundleDataResolver();
                 case Work.ImageSource.CompiledResource:
-                    return new ResourceDataResolver();
-                case Work.ImageSource.Filepath:
-                    return new FileDataResolver();
+				case Work.ImageSource.Filepath:
+					return new FallbackDataResolver(
+						new ResourceDataResolver(),
+						new BundleDataResolver(),
+						new FileDataResolver());
                 case Work.ImageSource.Url:
                     if (!string.IsNullOrWhiteSpace(identifier) && identifier.IsDataUrl())
                         return new DataUrlResolver();
