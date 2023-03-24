@@ -5,6 +5,8 @@ using FFImageLoading.IO;
 using System.Threading.Tasks;
 using FFImageLoading.Helpers;
 using System.Threading;
+using Foundation;
+using Microsoft.Maui.Storage;
 
 namespace FFImageLoading.DataResolvers
 {
@@ -39,6 +41,27 @@ namespace FFImageLoading.DataResolvers
 			{
 				file = identifier;
 			}
+
+			// Let's check the bundle and bundle resource paths too
+			foreach (var bu in NSBundle._AllBundles)
+			{
+				var path = Path.Combine(bu.ResourcePath, identifier);
+
+				if (File.Exists(path))
+				{
+					file = path;
+					break;
+				}
+
+				path = Path.Combine(bu.BundlePath, identifier);
+
+				if (File.Exists(path))
+				{
+					file = path;
+					break;
+				}
+			}
+
 
 			token.ThrowIfCancellationRequested();
 
